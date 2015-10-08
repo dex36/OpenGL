@@ -289,20 +289,35 @@ int main(int argc, char ** argv)
 		20, 22, 21, 20, 23, 22 // Bottom
 	};
 
-	////////VBO
+	///VBO
 	GLuint vboID;
 	glGenBuffers(1, &vboID);
 	glBindBuffer(GL_ARRAY_BUFFER, vboID);
 	glBufferData(GL_ARRAY_BUFFER, sizeof(verts), verts, GL_DYNAMIC_DRAW);
-	glEnableVertexAttribArray(0);
-	glEnableVertexAttribArray(1);
-	glEnableVertexAttribArray(2);
-	glEnableVertexAttribArray(3);
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+	//VBO ARRAY
 	GLuint indexbuff;
 	glGenBuffers(1, &indexbuff);
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, indexbuff);
 	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_DYNAMIC_DRAW);
-	//////
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+
+	//VAO
+	GLuint vertexarray;
+	glGenVertexArrays(1, &vertexarray);
+	glBindVertexArray(vertexarray);
+	glEnableVertexAttribArray(0);
+	glEnableVertexAttribArray(1);
+	glEnableVertexAttribArray(2);
+	glEnableVertexAttribArray(3);
+	glBindBuffer(GL_ARRAY_BUFFER, vboID);
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(float) * 11, (void*)0);
+	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(float) * 11, (char*)(sizeof(float) * 3));
+	glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(float) * 11, (char*)(sizeof(float) * 6));
+	glVertexAttribPointer(3, 3, GL_FLOAT, GL_FALSE, sizeof(float) * 11, (char*)(sizeof(float) * 9));
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, indexbuff);
+	glBindVertexArray(0);
 
 	glActiveTexture(GL_TEXTURE0);
 	glEnable(GL_TEXTURE_2D);
@@ -362,25 +377,12 @@ int main(int argc, char ** argv)
 		mat4 worldToProjectionMatrix = projectionMatrix* camera.getWorldToViewMatrix();
 
 		//CUBE 1
-		glBindBuffer(GL_ARRAY_BUFFER, vboID);
-		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(float) * 11, (void*)0);
-		glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(float) * 11, (char*)(sizeof(float) * 3));
-		glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(float) * 11, (char*)(sizeof(float) * 6));
-		glVertexAttribPointer(3, 3, GL_FLOAT, GL_FALSE, sizeof(float) * 11, (char*)(sizeof(float) * 9));
-		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, indexbuff);
+		glBindVertexArray(vertexarray);
 
 		mat4 cube1WorldMatrix = translate(vec3(1.0f, 0.0f, -3.75f)) * rotate(0.0f, vec3(0.0f, 1.0f, 1.0f));
 		fullTransformMatrix = worldToProjectionMatrix *cube1WorldMatrix;
 		glUniformMatrix4fv(fullTransformMatrixUniformLocation, 1, GL_FALSE, &fullTransformMatrix[0][0]);
 		glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_SHORT, 0);
-		
-		// CUBE 2 
-		glBindBuffer(GL_ARRAY_BUFFER, vboID);
-		glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(float) * 11, (void*)0);
-		glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(float) * 11, (char*)(sizeof(float) * 3));
-		glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(float) * 11, (char*)(sizeof(float) * 6));
-		glVertexAttribPointer(3, 3, GL_FLOAT, GL_FALSE, sizeof(float) * 11, (char*)(sizeof(float) * 9));
-		glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, indexbuff);
 
 		mat4 cube2WorldMatrix = translate(vec3(-3.0f, 0.0f, -3.75f)) * rotate(126.0f, vec3(1.0f, 0.0f, 0.0f));
 		fullTransformMatrix = worldToProjectionMatrix *cube2WorldMatrix;
