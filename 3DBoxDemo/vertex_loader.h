@@ -83,7 +83,7 @@ void main()
 
 	vec3 lightVector = normalize(lightPosition - normal);
 	float brightness = dot(lightVector, normal);
-	theColor = vertexColor * vec3(brightness, brightness, brightness);// * ambientLight;
+	theColor = vec3(brightness, brightness, brightness);//vertexColor * .... *ambientLight;
 
 	UV = vertexUV;
 }
@@ -101,6 +101,6 @@ uniform sampler2D mySampler;
 
 void main()
 {
-	color = texture(mySampler, UV);
+	color = texture(mySampler, UV);// *vec4(theColor, 1.0);
 }
 );
