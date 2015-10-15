@@ -3,6 +3,8 @@
 #include <stdlib.h>
 #include <string>
 #include <fstream>
+
+#include <vector>
 #include <GL\glew.h> // UP
 #include <GL\glut.h>
 #include <GLFW\glfw3.h>
@@ -16,8 +18,10 @@
 #include "stb_image.h"
 
 #include "vertex_loader.h"
+#include "obj_loader.h"
 
 using namespace glm;
+using namespace std;
 
 GLuint LoadTexture(const char * filename)
 {
@@ -35,46 +39,6 @@ GLuint LoadTexture(const char * filename)
         glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, width, height, 0, GL_RGB, GL_UNSIGNED_BYTE, data);
  
         return texture;
-}
-
-std::string LoadFileToString(const char* filepath){
-
-	std::string fileData = "";
-	std::ifstream stream(filepath, std::ios::in);
-
-	if (stream.is_open()){
-		std::string line = "";
-		while (getline(stream, line)){
-			fileData += "\n" + line;
-		}
-		stream.close();
-	}
-	return fileData;
-}
-
-GLuint LoadShaders(const char*VertShaderPath, const char* fragShaderPath){
-
-	GLuint vertShader = glCreateShader(GL_VERTEX_SHADER);
-	GLuint fragShader = glCreateShader(GL_FRAGMENT_SHADER);
-
-	std::string vertShaderSource = LoadFileToString(VertShaderPath);
-	std::string fragShaderSource = LoadFileToString(fragShaderPath);
-
-	const char*  rawVertShaderSource = vertShaderSource.c_str();
-	const char*  rawfragShaderSource = fragShaderSource.c_str();
-
-	glShaderSource(vertShader, 1, &rawVertShaderSource, NULL);
-	glShaderSource(fragShader, 1, &rawfragShaderSource, NULL);
-
-	glCompileShader(vertShader);
-	glCompileShader(fragShader);
-
-	GLuint program = glCreateProgram();
-	glAttachShader(program, vertShader);
-	glAttachShader(program, fragShader);
-	glLinkProgram(program);
-
-	return program;
 }
 
 const float movementspeed = 0.01f;
@@ -163,7 +127,6 @@ int main(int argc, char ** argv)
 		exit(EXIT_FAILURE);
 	}
 	glEnable(GL_DEPTH_TEST);
-	glEnable(GL_CULL_FACE);
 
 	GLuint program = Program::Load
 		(
@@ -312,10 +275,10 @@ int main(int argc, char ** argv)
 	glEnableVertexAttribArray(2);
 	glEnableVertexAttribArray(3);
 	glBindBuffer(GL_ARRAY_BUFFER, vboID);
-	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(float) * 11, (void*)0);
-	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(float) * 11, (char*)(sizeof(float) * 3));
-	glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(float) * 11, (char*)(sizeof(float) * 6));
-	glVertexAttribPointer(3, 3, GL_FLOAT, GL_FALSE, sizeof(float) * 11, (char*)(sizeof(float) * 9));
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)0);
+	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (char*)(sizeof(float) * 3));
+	glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (char*)(sizeof(float) * 6));
+	glVertexAttribPointer(3, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (char*)(sizeof(float) * 9));
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, indexbuff);
 	glBindVertexArray(0);
 
@@ -324,15 +287,22 @@ int main(int argc, char ** argv)
 	glBindTexture(GL_TEXTURE_2D, LoadTexture("block.jpg"));
 
 	Camera camera;
-
+	static float xlight = 2.0f;
+	static float ylight = 2.0f;
+	static float time = 0.0f;
+	
 	while (!glfwWindowShouldClose(window))
 	{
+		
 		glClear(GL_DEPTH_BUFFER_BIT | GL_COLOR_BUFFER_BIT);
+		glEnable(GL_CULL_FACE);
+		///
+		const GLfloat color[] = { (float)sin(time) * 0.5f + 0.5f,(float)cos(time) * 0.5f + 0.5f,0.0f, 1.0f };
+		glClearBufferfv(GL_COLOR, 0, color);
+		time += 0.001f;
+		////
 
 		glUseProgram(program);
-
-		double xpos, ypos;
-		glfwGetCursorPos(window, &xpos, &ypos);
 		
 		if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS){
 			camera.moveForward();
@@ -352,9 +322,10 @@ int main(int argc, char ** argv)
 		if (glfwGetKey(window, GLFW_KEY_F) == GLFW_PRESS){
 			camera.down();
 		}
+		double xpos, ypos;
+		glfwGetCursorPos(window, &xpos, &ypos);
 		if (xpos > 0 && xpos < 640 && ypos>0 && ypos < 400){
 			camera.mouseUpdate(vec2(float(xpos / 50), float(ypos / 50)));
-			std::cout << "pos x: " << xpos << "pos y: " << ypos << std::endl;
 		}
 
 		// Textures
@@ -365,15 +336,29 @@ int main(int argc, char ** argv)
 		vec3 ambientLight(0.3f, 0.3f, 0.3f);
 		glUniform3fv(ambientlightlocation, 1, &ambientLight[0]);
 
+		if (glfwGetKey(window, GLFW_KEY_UP) == GLFW_PRESS){
+			xlight += 0.01f;
+		}
+		if (glfwGetKey(window, GLFW_KEY_DOWN) == GLFW_PRESS){
+			xlight -= 0.01f;
+		}
+		if (glfwGetKey(window, GLFW_KEY_LEFT) == GLFW_PRESS){
+			ylight += 0.01f;
+		}
+		if (glfwGetKey(window, GLFW_KEY_RIGHT) == GLFW_PRESS){
+			ylight -= 0.01f;
+		}
 		//Light
 		GLint lightlocation = glGetUniformLocation(program, "lightPosition");
-		vec3 lightposition(1.0f, 1.0f, -3.75f);
+		vec3 lightposition(xlight, ylight, -4.0f);
 		glUniform3fv(lightlocation, 1, &lightposition[0]);
 
 
+
+		//World
 		GLint fullTransformMatrixUniformLocation = glGetUniformLocation(program, "fullTransformMatrix");
 		mat4 fullTransformMatrix;
-		mat4 projectionMatrix = perspective(90.0f, (480.0f / 640.0f), 0.1f, 5.0f);
+		mat4 projectionMatrix = perspective(90.0f, (480.0f / 640.0f), 0.1f, 20.0f);
 		mat4 worldToProjectionMatrix = projectionMatrix* camera.getWorldToViewMatrix();
 
 		//CUBE 1
@@ -389,12 +374,21 @@ int main(int argc, char ** argv)
 		glUniformMatrix4fv(fullTransformMatrixUniformLocation, 1, GL_FALSE, &fullTransformMatrix[0][0]);
 		glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_SHORT, 0);
 
+		for (int i = 1; i < 10; i++){
+			for (int j = 1; j < 10; j++){
+				mat4 cube3WorldMatrix = translate(vec3(-5.0f + 2*(float)j, -2.0f, -10.0f + 2*(float)i)) * rotate(0.0f, vec3(1.0f, 0.0f, 0.0f));
+				fullTransformMatrix = worldToProjectionMatrix *cube3WorldMatrix;
+				glUniformMatrix4fv(fullTransformMatrixUniformLocation, 1, GL_FALSE, &fullTransformMatrix[0][0]);
+				glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_SHORT, 0);
+			}
+		}
+		
 
 		glfwSwapBuffers(window);
 		glfwPollEvents();
-
 	}
 	glfwDestroyWindow(window);
 	glfwTerminate();
 	exit(EXIT_SUCCESS);
 }
+
