@@ -18,7 +18,7 @@
 #include "stb_image.h"
 
 #include "vertex_loader.h"
-#include "obj_loader.h"
+//#include "obj_loader.h"
 
 using namespace glm;
 using namespace std;
@@ -278,19 +278,72 @@ int main(int argc, char ** argv)
 	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (void*)0);
 	glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (char*)(sizeof(float) * 3));
 	glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, sizeof(Vertex), (char*)(sizeof(float) * 6));
-	glVertexAttribPointer(3, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (char*)(sizeof(float) * 9));
+	glVertexAttribPointer(3, 3, GL_FLOAT, GL_FALSE, sizeof(Vertex), (char*)(sizeof(float) * 8));
 	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, indexbuff);
 	glBindVertexArray(0);
 
-	glActiveTexture(GL_TEXTURE0);
-	glEnable(GL_TEXTURE_2D);
-	glBindTexture(GL_TEXTURE_2D, LoadTexture("block.jpg"));
 
 	Camera camera;
 	static float xlight = 2.0f;
 	static float ylight = 2.0f;
 	static float time = 0.0f;
-	
+
+	///////////////////////
+
+	#define HM_SIZE_X 4 
+	#define HM_SIZE_Y 4
+
+	float fHeights[HM_SIZE_X*HM_SIZE_Y] =
+	{
+		4.0f, 2.0f, 3.0f, 1.0f,
+		3.0f, 5.0f, 8.0f, 2.0f,
+		7.0f, 10.0f, 12.0f, 6.0f,
+		4.0f, 6.0f, 8.0f, 3.0f
+	};
+	float fSizeX = 40.0f, fSizeZ = 40.0f;
+
+	glm::vec3 vHeightmapData[HM_SIZE_X*HM_SIZE_Y];
+	for (int i = 0; i<HM_SIZE_X*HM_SIZE_Y; i++)
+	{
+		float column = float(i%HM_SIZE_X);
+		float row = float(i / HM_SIZE_X);
+		vHeightmapData[i] = glm::vec3(-fSizeX / 2 + fSizeX*column / float(HM_SIZE_X - 1), fHeights[i],-fSizeZ / 2 + fSizeZ*row / float(HM_SIZE_Y - 1));
+	}
+	int iIndices[] =
+	{
+		0, 4, 1, 5, 2, 6, 3, 7, 16, // First row, then restart
+		4, 8, 5, 9, 6, 10, 7, 11, 16, // Second row, then restart
+		8, 12, 9, 13, 10, 14, 11, 15, // Third row, no restart
+	};
+
+	GLuint uiVBOHeightmapData; 
+	glGenBuffers(1, &uiVBOHeightmapData); 
+	glBindBuffer(GL_ARRAY_BUFFER, uiVBOHeightmapData);
+	glBufferData(GL_ARRAY_BUFFER, sizeof(glm::vec3)*HM_SIZE_X*HM_SIZE_Y, vHeightmapData, GL_STATIC_DRAW);
+	glBindBuffer(GL_ARRAY_BUFFER, 0);
+
+	GLuint uiVBOIndices; 
+	glGenBuffers(1, &uiVBOIndices); 
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, uiVBOIndices);
+	glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(iIndices), iIndices, GL_STATIC_DRAW);
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+
+	GLuint uiVAOHeightmap; 
+	glGenVertexArrays(1, &uiVAOHeightmap); 
+	glBindVertexArray(uiVAOHeightmap);
+	glEnableVertexAttribArray(0);
+	glEnableVertexAttribArray(1);
+	glBindBuffer(GL_ARRAY_BUFFER, uiVBOHeightmapData);
+	glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 0, 0);
+	glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, uiVBOIndices);
+	glBindVertexArray(0);
+	///////////////////////////////
+
+	glActiveTexture(GL_TEXTURE0);
+	glEnable(GL_TEXTURE_2D);
+
+
+
 	while (!glfwWindowShouldClose(window))
 	{
 		
@@ -353,16 +406,16 @@ int main(int argc, char ** argv)
 		vec3 lightposition(xlight, ylight, -4.0f);
 		glUniform3fv(lightlocation, 1, &lightposition[0]);
 
-
-
 		//World
 		GLint fullTransformMatrixUniformLocation = glGetUniformLocation(program, "fullTransformMatrix");
 		mat4 fullTransformMatrix;
 		mat4 projectionMatrix = perspective(90.0f, (480.0f / 640.0f), 0.1f, 20.0f);
 		mat4 worldToProjectionMatrix = projectionMatrix* camera.getWorldToViewMatrix();
 
+
 		//CUBE 1
 		glBindVertexArray(vertexarray);
+		glBindTexture(GL_TEXTURE_2D, LoadTexture("block.jpg"));
 
 		mat4 cube1WorldMatrix = translate(vec3(1.0f, 0.0f, -3.75f)) * rotate(0.0f, vec3(0.0f, 1.0f, 1.0f));
 		fullTransformMatrix = worldToProjectionMatrix *cube1WorldMatrix;
@@ -373,16 +426,20 @@ int main(int argc, char ** argv)
 		fullTransformMatrix = worldToProjectionMatrix *cube2WorldMatrix;
 		glUniformMatrix4fv(fullTransformMatrixUniformLocation, 1, GL_FALSE, &fullTransformMatrix[0][0]);
 		glDrawElements(GL_TRIANGLES, 36, GL_UNSIGNED_SHORT, 0);
+	
+		//Terrain
+		glBindVertexArray(uiVAOHeightmap);
+		glBindTexture(GL_TEXTURE_2D, LoadTexture("block.jpg"));
 
-		for (int i = 1; i < 10; i++){
-			for (int j = 1; j < 10; j++){
-				mat4 cube3WorldMatrix = translate(vec3(-5.0f + 2*(float)j, -2.0f, -10.0f + 2*(float)i)) * rotate(0.0f, vec3(1.0f, 0.0f, 0.0f));
-				fullTransformMatrix = worldToProjectionMatrix *cube3WorldMatrix;
-				glUniformMatrix4fv(fullTransformMatrixUniformLocation, 1, GL_FALSE, &fullTransformMatrix[0][0]);
-				glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_SHORT, 0);
-			}
-		}
-		
+		glEnable(GL_PRIMITIVE_RESTART);
+		glPrimitiveRestartIndex(HM_SIZE_X*HM_SIZE_Y);
+
+		mat4 cube2WorldMatrix2 = translate(vec3(0.0f, -15.0f, 0.0f)) * rotate(0.0f, vec3(1.0f, 0.0f, 0.0f));
+		fullTransformMatrix = worldToProjectionMatrix *cube2WorldMatrix2;
+		glUniformMatrix4fv(fullTransformMatrixUniformLocation, 1, GL_FALSE, &fullTransformMatrix[0][0]);
+		glDrawElements(GL_TRIANGLE_STRIP, HM_SIZE_X*(HM_SIZE_Y - 1) * 2 + HM_SIZE_Y - 2, GL_UNSIGNED_INT, 0);
+
+		glDisable(GL_PRIMITIVE_RESTART);
 
 		glfwSwapBuffers(window);
 		glfwPollEvents();
